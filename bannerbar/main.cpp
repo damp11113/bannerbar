@@ -57,6 +57,7 @@ struct BannerConfig {
 struct TextOptions {
     std::wstring font = L"Arial";
     int size = 15;
+    std::wstring color;
 };
 
 struct BorderConfig {
@@ -116,7 +117,6 @@ COLORREF HexToRGB(const std::wstring& hex);
 std::wstring UTF8ToWide(const std::string& str);
 std::string WideToUTF8(const std::wstring& wstr);
 std::wstring GetOSVersion();
-std::wstring GetKernelVersion();
 
 // Utility functions
 std::wstring UTF8ToWide(const std::string& str) {
@@ -201,31 +201,6 @@ std::wstring GetUsername() {
     return L"UNKNOWN";
 }
 
-std::wstring GetLocalIP() {
-    PIP_ADAPTER_INFO pAdapterInfo = (IP_ADAPTER_INFO*)malloc(sizeof(IP_ADAPTER_INFO));
-    ULONG bufLen = sizeof(IP_ADAPTER_INFO);
-
-    if (GetAdaptersInfo(pAdapterInfo, &bufLen) == ERROR_BUFFER_OVERFLOW) {
-        free(pAdapterInfo);
-        pAdapterInfo = (IP_ADAPTER_INFO*)malloc(bufLen);
-    }
-
-    std::wstring ip = L"0.0.0.0";
-    if (GetAdaptersInfo(pAdapterInfo, &bufLen) == NO_ERROR) {
-        PIP_ADAPTER_INFO pAdapter = pAdapterInfo;
-        while (pAdapter) {
-            if (pAdapter->Type == MIB_IF_TYPE_ETHERNET || pAdapter->Type == IF_TYPE_IEEE80211) {
-                ip = UTF8ToWide(pAdapter->IpAddressList.IpAddress.String);
-                if (ip != L"0.0.0.0") break;
-            }
-            pAdapter = pAdapter->Next;
-        }
-    }
-
-    free(pAdapterInfo);
-    return ip;
-}
-
 std::wstring GetOSVersion() {
     OSVERSIONINFOEXW osvi = {};
     osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEXW);
@@ -244,89 +219,6 @@ std::wstring GetOSVersion() {
     return L"Windows";
 }
 
-std::wstring GetKernelVersion() {
-    OSVERSIONINFOEXW osvi = {};
-    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEXW);
-
-    typedef LONG(WINAPI* RtlGetVersionPtr)(PRTL_OSVERSIONINFOEXW);
-    HMODULE hMod = GetModuleHandleW(L"ntdll.dll");
-    if (hMod) {
-        RtlGetVersionPtr RtlGetVersion = (RtlGetVersionPtr)GetProcAddress(hMod, "RtlGetVersion");
-        if (RtlGetVersion) {
-            RtlGetVersion((PRTL_OSVERSIONINFOEXW)&osvi);
-            wchar_t buf[64];
-            swprintf(buf, 64, L"NT %d.%d", osvi.dwMajorVersion, osvi.dwMinorVersion);
-            return buf;
-        }
-    }
-    return L"NT";
-}
-
-std::wstring GetCPUUsage() {
-    static ULARGE_INTEGER lastCPU, lastSysCPU, lastUserCPU;
-    static int numProcessors = 0;
-    static bool initialized = false;
-
-    if (!initialized) {
-        SYSTEM_INFO sysInfo;
-        GetSystemInfo(&sysInfo);
-        numProcessors = sysInfo.dwNumberOfProcessors;
-
-        FILETIME ftime, fsys, fuser;
-        GetSystemTimeAsFileTime(&ftime);
-        memcpy(&lastCPU, &ftime, sizeof(FILETIME));
-
-        HANDLE self = GetCurrentProcess();
-        GetProcessTimes(self, &ftime, &ftime, &fsys, &fuser);
-        memcpy(&lastSysCPU, &fsys, sizeof(FILETIME));
-        memcpy(&lastUserCPU, &fuser, sizeof(FILETIME));
-
-        initialized = true;
-        return L"0%";
-    }
-
-    FILETIME ftime, fsys, fuser;
-    ULARGE_INTEGER now, sys, user;
-
-    GetSystemTimeAsFileTime(&ftime);
-    memcpy(&now, &ftime, sizeof(FILETIME));
-
-    HANDLE self = GetCurrentProcess();
-    GetProcessTimes(self, &ftime, &ftime, &fsys, &fuser);
-    memcpy(&sys, &fsys, sizeof(FILETIME));
-    memcpy(&user, &fuser, sizeof(FILETIME));
-
-    double percent = 0.0;
-    if (now.QuadPart != lastCPU.QuadPart) {
-        percent = (sys.QuadPart - lastSysCPU.QuadPart) +
-            (user.QuadPart - lastUserCPU.QuadPart);
-        percent /= (now.QuadPart - lastCPU.QuadPart);
-        percent /= numProcessors;
-        percent *= 100;
-    }
-
-    lastCPU = now;
-    lastUserCPU = user;
-    lastSysCPU = sys;
-
-    wchar_t buf[32];
-    swprintf(buf, 32, L"%.1f%%", percent);
-    return buf;
-}
-
-std::wstring GetMemoryUsage() {
-    MEMORYSTATUSEX memInfo;
-    memInfo.dwLength = sizeof(MEMORYSTATUSEX);
-    GlobalMemoryStatusEx(&memInfo);
-
-    DWORDLONG totalMB = memInfo.ullTotalPhys / (1024 * 1024);
-    DWORDLONG usedMB = (memInfo.ullTotalPhys - memInfo.ullAvailPhys) / (1024 * 1024);
-
-    wchar_t buf[64];
-    swprintf(buf, 64, L"%llu/%llu MB", usedMB, totalMB);
-    return buf;
-}
-
 std::wstring ExpandTemplate(const std::wstring& text) {
     std::wstring result = text;
 
@@ -340,12 +232,7 @@ std::wstring ExpandTemplate(const std::wstring& text) {
 
     replace(L"<HOST>", GetHostname());
     replace(L"<USER>", GetUsername());
-    replace(L"<IP>", GetLocalIP());
-    replace(L"<LOCALIP>", GetLocalIP());
-    replace(L"<CPU_USE>", GetCPUUsage());
-    replace(L"<MEMORY_CURRENT>", GetMemoryUsage());
     replace(L"<OS>", GetOSVersion());
-    replace(L"<KERNEL>", GetKernelVersion());
 
     // Date and time
     SYSTEMTIME st;
@@ -383,7 +270,7 @@ void SaveDefaultConfig() {
     if (!file.is_open()) return;
 
     file << "{\n";
-    file << "\t\"display\": -1,\n";
+    file << "\t\"display\": 0,\n";
     file << "\t\"netsync\": {\n";
     file << "\t\t\"enable\": false,\n";
     file << "\t\t\"ip\": \"127.0.0.1\",\n";
@@ -397,20 +284,21 @@ void SaveDefaultConfig() {
     file << "\t\t\t\"top_banner\": {\n";
     file << "\t\t\t\t\"enable\": true,\n";
     file << "\t\t\t\t\"center_text\": \"UNCLASSIFIED\",\n";
-    file << "\t\t\t\t\"left_text\": \"<IP> | <LOCALIP> | <CPU_USE> | <MEMORY_CURRENT>\",\n";
+    file << "\t\t\t\t\"left_text\": \"<HOST> | <USER> | <OS>\",\n";
     file << "\t\t\t\t\"right_text\": \"CALLSIGN\",\n";
     file << "\t\t\t\t\"size\": 20\n";
     file << "\t\t\t},\n";
     file << "\t\t\t\"bottom_banner\": {\n";
     file << "\t\t\t\t\"enable\": false,\n";
     file << "\t\t\t\t\"center_text\": \"UNCLASSIFIED\",\n";
-    file << "\t\t\t\t\"left_text\": \"<HOST> | <USER> | <KERNEL> | <OS>\",\n";
+    file << "\t\t\t\t\"left_text\": \"\",\n";
     file << "\t\t\t\t\"right_text\": \"FPCON\",\n";
     file << "\t\t\t\t\"size\": 20\n";
     file << "\t\t\t},\n";
     file << "\t\t\t\"text_options\": {\n";
     file << "\t\t\t\t\"font\": \"Arial\",\n";
-    file << "\t\t\t\t\"size\": 15\n";
+    file << "\t\t\t\t\"size\": 15,\n";
+    file << "\t\t\t\t\"color\": \"#ffffff\"\n";
     file << "\t\t\t},\n";
     file << "\t\t\t\"border\": {\n";
     file << "\t\t\t\t\"enable\": true,\n";
@@ -437,7 +325,8 @@ void SaveDefaultConfig() {
     file << "\t\t\t},\n";
     file << "\t\t\t\"text_options\": {\n";
     file << "\t\t\t\t\"font\": \"Arial\",\n";
-    file << "\t\t\t\t\"size\": 15\n";
+    file << "\t\t\t\t\"size\": 15,\n";
+    file << "\t\t\t\t\"color\": \"#000000\"\n";
     file << "\t\t\t},\n";
     file << "\t\t\t\"border\": {\n";
     file << "\t\t\t\t\"enable\": true,\n";
@@ -543,6 +432,8 @@ bool LoadConfig() {
                 if (st.textOptions.font.empty()) st.textOptions.font = L"Arial";
                 st.textOptions.size = GetJsonInt(toObj, "size");
                 if (st.textOptions.size == 0) st.textOptions.size = 15;
+                st.textOptions.color = GetJsonString(toObj, "color");
+                if (st.textOptions.color.empty()) st.textOptions.color = L"#ffffff";
             }
 
             // Parse border
@@ -601,6 +492,8 @@ LRESULT CALLBACK BannerWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam
         ClassificationStatus status = GetCurrentStatus();
         COLORREF bgColor = HexToRGB(status.color);
 
+        COLORREF textColor = HexToRGB(status.textOptions.color);
+
         // Fill background
         HBRUSH brush = CreateSolidBrush(bgColor);
         FillRect(hdc, &rect, brush);
@@ -613,7 +506,7 @@ LRESULT CALLBACK BannerWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam
         if (banner.enable) {
             // Setup text drawing
             SetBkMode(hdc, TRANSPARENT);
-            SetTextColor(hdc, RGB(0, 0, 0));
+            SetTextColor(hdc, textColor);
 
             HFONT hFont = CreateFontW(
                 status.textOptions.size, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
