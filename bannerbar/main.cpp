@@ -579,13 +579,31 @@ LRESULT CALLBACK BorderWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam
 // Create overlay window
 HWND CreateOverlayWindow(LPCWSTR className, WNDPROC wndProc, int x, int y, int width, int height, bool isAppBar = false, bool isTop = true) {
     HWND hwnd = CreateWindowExW(
-        WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
+        WS_EX_LAYERED |
+        WS_EX_TOPMOST |
+        WS_EX_TOOLWINDOW |
+        WS_EX_NOACTIVATE,      // <--- IMPORTANT
         className, L"", WS_POPUP,
         x, y, width, height,
         NULL, NULL, GetModuleHandle(NULL), NULL
     );
 
     if (hwnd) {
+        // Make window always on-top (even above fullscreen apps)
+        SetWindowPos(
+            hwnd,
+            HWND_TOPMOST,
+            x, y, width, height,
+            SWP_NOACTIVATE | SWP_SHOWWINDOW
+        );
+
+        // Make it click-through (optional)
+        SetWindowLong(hwnd, GWL_EXSTYLE,
+            GetWindowLong(hwnd, GWL_EXSTYLE) |
+            WS_EX_TRANSPARENT |
+            WS_EX_LAYERED
+        );
+
         SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA);
         SetWindowLongPtr(hwnd, GWLP_USERDATA, isTop ? 0 : 1);
         ShowWindow(hwnd, SW_SHOW);
