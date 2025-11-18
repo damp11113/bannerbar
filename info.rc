@@ -1,38 +1,98 @@
-#include <windows.h> // Include standard Windows headers for resource definitions
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+/////////////////////////////////////////////////////////////////////////////
+// Thai (Thailand) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_THA)
+LANGUAGE LANG_THAI, SUBLANG_DEFAULT
+#pragma code_page(874)
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,0        // Major, Minor, Revision, Build
- PRODUCTVERSION 1,0,0,0     // Major, Minor, Revision, Build
+ FILEVERSION 1,0,0,0
+ PRODUCTVERSION 1,0,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
- FILEFLAGS 0x1L             // VS_FF_DEBUG
+ FILEFLAGS 0x1L
 #else
- FILEFLAGS 0x0L             // Final version
+ FILEFLAGS 0x0L
 #endif
- FILEOS VOS_NT_WINDOWS32    // Operating System: Windows 64-bit
- FILETYPE VFT_APP           // File Type: Application
- FILESUBTYPE VFT2_UNKNOWN   // File Subtype: Not used
-
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
 BEGIN
     BLOCK "StringFileInfo"
     BEGIN
-        BLOCK "040904B0"    // Language: US English (0409), Character Set: Windows Multilingual (04B0)
+        BLOCK "040904b0"
         BEGIN
-            VALUE "CompanyName", "DPSoftware Defence Foundation (DPS-DF)\0"
-            VALUE "FileDescription", "Display a notification that sensitive material is being displayed\0"
-            VALUE "FileVersion", "1.0.0.0\0"
-            VALUE "InternalName", "bannerbar.exe\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 DPS-DF\0"
-            VALUE "OriginalFilename", "bannerbar.exe\0"
-            VALUE "ProductName", "BannerBar\0"
-            VALUE "ProductVersion", "1.0.0.0\0"
+            VALUE "CompanyName", "DPSoftware Defence Foundation (DPS-DF)"
+            VALUE "FileDescription", "BannerBar (Classification Banner)"
+            VALUE "FileVersion", "1.0.0.0"
+            VALUE "InternalName", "bannerbar.exe"
+            VALUE "LegalCopyright", "Copyright (C) 2025 DPS-DF"
+            VALUE "OriginalFilename", "bannerbar.exe"
+            VALUE "ProductName", "BannerBar"
+            VALUE "ProductVersion", "1.0.0.0"
         END
     END
     BLOCK "VarFileInfo"
     BEGIN
-        VALUE "Translation", 0x0409, 1200 // US English, Unicode
+        VALUE "Translation", 0x409, 1200
     END
 END
 
-// You can also add other resources here, like icons:
-// IDI_MYICON ICON "myicon.ico"
+#endif    // Thai (Thailand) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+// English (United States) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+#endif    // English (United States) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+
