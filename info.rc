@@ -1,0 +1,38 @@
+#include <windows.h> // Include standard Windows headers for resource definitions
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,0        // Major, Minor, Revision, Build
+ PRODUCTVERSION 1,0,0,0     // Major, Minor, Revision, Build
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L             // VS_FF_DEBUG
+#else
+ FILEFLAGS 0x0L             // Final version
+#endif
+ FILEOS VOS_NT_WINDOWS32    // Operating System: Windows 64-bit
+ FILETYPE VFT_APP           // File Type: Application
+ FILESUBTYPE VFT2_UNKNOWN   // File Subtype: Not used
+
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"    // Language: US English (0409), Character Set: Windows Multilingual (04B0)
+        BEGIN
+            VALUE "CompanyName", "DPSoftware Defence Foundation (DPS-DF)\0"
+            VALUE "FileDescription", "Display a notification that sensitive material is being displayed\0"
+            VALUE "FileVersion", "1.0.0.0\0"
+            VALUE "InternalName", "bannerbar.exe\0"
+            VALUE "LegalCopyright", "Copyright (C) 2025 DPS-DF\0"
+            VALUE "OriginalFilename", "bannerbar.exe\0"
+            VALUE "ProductName", "BannerBar\0"
+            VALUE "ProductVersion", "1.0.0.0\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200 // US English, Unicode
+    END
+END
+
+// You can also add other resources here, like icons:
+// IDI_MYICON ICON "myicon.ico"
