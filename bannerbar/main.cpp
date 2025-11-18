@@ -579,7 +579,7 @@ LRESULT CALLBACK BorderWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam
 // Create overlay window
 HWND CreateOverlayWindow(LPCWSTR className, WNDPROC wndProc, int x, int y, int width, int height, bool isAppBar = false, bool isTop = true) {
     HWND hwnd = CreateWindowExW(
-        WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
+        WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
         className, L"", WS_POPUP,
         x, y, width, height,
         NULL, NULL, GetModuleHandle(NULL), NULL
