@@ -594,15 +594,15 @@ HWND CreateOverlayWindow(LPCWSTR className, WNDPROC wndProc, int x, int y, int w
             hwnd,
             HWND_TOPMOST,
             x, y, width, height,
-            SWP_NOACTIVATE | SWP_SHOWWINDOW
+            SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOOWNERZORDER
         );
 
         // Make it click-through (optional)
         SetWindowLong(hwnd, GWL_EXSTYLE,
             GetWindowLong(hwnd, GWL_EXSTYLE) |
+            WS_EX_LAYERED |
             WS_EX_TRANSPARENT |
-            WS_EX_LAYERED
-        );
+            WS_EX_NOREDIRECTIONBITMAP);
 
         SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA);
         SetWindowLongPtr(hwnd, GWLP_USERDATA, isTop ? 0 : 1);
