@@ -1,3 +1,6 @@
+#define WINVER 0x0A00
+#define _WIN32_WINNT 0x0A00
+
 #ifndef UNICODE
 #define UNICODE
 #endif
@@ -480,6 +483,14 @@ void RemoveAppBar(HWND hwnd) {
 }
 
 // Window procedures
+#ifndef min
+#define min(a,b) ((a)<(b)?(a):(b))
+#endif
+#ifndef max
+#define max(a,b) ((a)>(b)?(a):(b))
+#endif
+
+// Replace BannerWndProc with this version:
 LRESULT CALLBACK BannerWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
     case WM_PAINT: {
@@ -491,7 +502,6 @@ LRESULT CALLBACK BannerWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam
 
         ClassificationStatus status = GetCurrentStatus();
         COLORREF bgColor = HexToRGB(status.color);
-
         COLORREF textColor = HexToRGB(status.textOptions.color);
 
         // Fill background
@@ -516,23 +526,59 @@ LRESULT CALLBACK BannerWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam
             );
             HFONT hOldFont = (HFONT)SelectObject(hdc, hFont);
 
-            // Draw center text
-            DrawTextW(hdc, banner.centerText.c_str(), -1, &rect,
-                DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-
-            // Draw left text
+            // Expand templates
             std::wstring leftText = ExpandTemplate(banner.leftText);
-            RECT leftRect = rect;
-            leftRect.left += 10;
-            DrawTextW(hdc, leftText.c_str(), -1, &leftRect,
-                DT_LEFT | DT_VCENTER | DT_SINGLELINE);
-
-            // Draw right text
+            std::wstring centerText = banner.centerText;
             std::wstring rightText = ExpandTemplate(banner.rightText);
-            RECT rightRect = rect;
-            rightRect.right -= 10;
-            DrawTextW(hdc, rightText.c_str(), -1, &rightRect,
-                DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
+
+            // Measure text sizes
+            SIZE leftSize = {}, centerSize = {}, rightSize = {};
+            if (!leftText.empty()) {
+                GetTextExtentPoint32W(hdc, leftText.c_str(), leftText.length(), &leftSize);
+            }
+            if (!centerText.empty()) {
+                GetTextExtentPoint32W(hdc, centerText.c_str(), centerText.length(), &centerSize);
+            }
+            if (!rightText.empty()) {
+                GetTextExtentPoint32W(hdc, rightText.c_str(), rightText.length(), &rightSize);
+            }
+
+            int padding = 10;
+            int totalWidth = rect.right - rect.left;
+
+            // Calculate available space for side texts
+            int sideSpace = (totalWidth - centerSize.cx) / 2 - padding * 2;
+
+            // Draw left text (truncate if needed)
+            if (!leftText.empty() && leftSize.cx > 0) {
+                RECT leftRect = rect;
+                leftRect.left += padding;
+                leftRect.right = leftRect.left + min(leftSize.cx, sideSpace);
+
+                DrawTextW(hdc, leftText.c_str(), -1, &leftRect,
+                    DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+            }
+
+            // Draw center text (always prioritized)
+            if (!centerText.empty()) {
+                RECT centerRect = rect;
+                // Reserve space for side texts
+                centerRect.left += max(leftSize.cx + padding * 2, padding);
+                centerRect.right -= max(rightSize.cx + padding * 2, padding);
+
+                DrawTextW(hdc, centerText.c_str(), -1, &centerRect,
+                    DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+            }
+
+            // Draw right text (truncate if needed)
+            if (!rightText.empty() && rightSize.cx > 0) {
+                RECT rightRect = rect;
+                rightRect.right -= padding;
+                rightRect.left = rightRect.right - min(rightSize.cx, sideSpace);
+
+                DrawTextW(hdc, rightText.c_str(), -1, &rightRect,
+                    DT_RIGHT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+            }
 
             SelectObject(hdc, hOldFont);
             DeleteObject(hFont);
@@ -550,7 +596,6 @@ LRESULT CALLBACK BannerWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam
     }
     return DefWindowProc(hwnd, msg, wParam, lParam);
 }
-
 LRESULT CALLBACK BorderWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
     case WM_PAINT: {
@@ -618,13 +663,14 @@ HWND CreateOverlayWindow(LPCWSTR className, WNDPROC wndProc, int x, int y, int w
     return hwnd;
 }
 
-// Monitor enumeration
+// Replace MonitorEnumProc with this version that resets the counter:
 BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
-    static int monitorIndex = 0;
+    int* pMonitorIndex = (int*)dwData;
+    int monitorIndex = *pMonitorIndex;
 
     // Check if we should show on this monitor
     if (g_config.display >= 0 && monitorIndex != g_config.display) {
-        monitorIndex++;
+        (*pMonitorIndex)++;
         return TRUE;
     }
 
@@ -695,9 +741,29 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMoni
     }
 
     g_monitorWindows.push_back(mw);
-    monitorIndex++;
+    (*pMonitorIndex)++;
 
     return TRUE;
+}
+
+// Cleanup
+void CleanupWindows() {
+    for (auto& mw : g_monitorWindows) {
+        if (mw.bannerTop) DestroyWindow(mw.bannerTop);
+        if (mw.bannerBottom) DestroyWindow(mw.bannerBottom);
+        if (mw.borderTop) DestroyWindow(mw.borderTop);
+        if (mw.borderBottom) DestroyWindow(mw.borderBottom);
+        if (mw.borderLeft) DestroyWindow(mw.borderLeft);
+        if (mw.borderRight) DestroyWindow(mw.borderRight);
+    }
+    g_monitorWindows.clear();
+}
+
+// Update RecreateWindows function:
+void RecreateWindows() {
+    CleanupWindows();
+    int monitorIndex = 0;
+    EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, (LPARAM)&monitorIndex);
 }
 
 // Update all displays
@@ -900,24 +966,20 @@ void ShowTrayMenu(HWND hwnd) {
     DestroyMenu(hMenu);
 }
 
-// Cleanup
-void CleanupWindows() {
-    for (auto& mw : g_monitorWindows) {
-        if (mw.bannerTop) DestroyWindow(mw.bannerTop);
-        if (mw.bannerBottom) DestroyWindow(mw.bannerBottom);
-        if (mw.borderTop) DestroyWindow(mw.borderTop);
-        if (mw.borderBottom) DestroyWindow(mw.borderBottom);
-        if (mw.borderLeft) DestroyWindow(mw.borderLeft);
-        if (mw.borderRight) DestroyWindow(mw.borderRight);
-    }
-    g_monitorWindows.clear();
-}
-
 // Hidden window for tray icon
 LRESULT CALLBACK HiddenWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
     case WM_CREATE:
         AddTrayIcon(hwnd);
+        return 0;
+
+    case WM_DISPLAYCHANGE:
+        // Resolution or DPI changed - recreate windows
+        RecreateWindows();
+        return 0;
+
+    case WM_RECREATE_WINDOWS:
+        RecreateWindows();
         return 0;
 
     case WM_TRAYICON:
@@ -938,7 +1000,7 @@ LRESULT CALLBACK HiddenWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam
             if (index < (int)g_config.status.size()) {
                 std::lock_guard<std::mutex> lock(g_configMutex);
                 g_config.currentStatusId = g_config.status[index].id;
-                EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, 0);
+                RecreateWindows();
             }
         }
         return 0;
@@ -972,13 +1034,10 @@ bool RegisterWindowClasses() {
     return true;
 }
 
-// Recreate all windows (must be called from main thread)
-void RecreateWindows() {
-    CleanupWindows();
-    EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, 0);
-}
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    SetProcessDPIAware();
+
     LoadConfig();
 
     if (!RegisterWindowClasses()) {
@@ -991,7 +1050,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         0, 0, 0, 0, NULL, NULL, hInstance, NULL);
 
     // Create windows for all monitors
-    EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, 0);
+    int monitorIndex = 0;
+    EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, (LPARAM)&monitorIndex);
 
     // Start UDP server thread (legacy)
     g_udpThread = std::thread(UDPServerThread);
@@ -1010,23 +1070,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         TranslateMessage(&msg);
         DispatchMessage(&msg);
 
-		if (msg.message == WM_RECREATE_WINDOWS) {
-			RecreateWindows();
-		}
-
-		if (msg.message == WM_QUIT) {
-			break;
-		}
-
-		if (msg.message == WM_COMMAND) {
-			if (LOWORD(msg.wParam) == ID_TRAY_EXIT) {
-				break;
-			}
-		}
-
-		if (!g_running) {
-			break;
-		}
+        if (!g_running) {
+            break;
+        }
     }
 
     // Cleanup

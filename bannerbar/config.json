@@ -8,56 +8,29 @@
 	"status": [
 		{
 			"id": "unclassified",
-			"color": "#008000",
+			"color": "#007a33",
 			"update_interval": 10000,
 			"top_banner": {
 				"enable": true,
 				"center_text": "UNCLASSIFIED",
-				"left_text": "<IP> | <LOCALIP> | <CPU_USE> | <MEMORY_CURRENT>",
-				"right_text": "CALLSIGN",
-				"size": 20
+				"left_text": "",
+				"right_text": "",
+				"size": 25
 			},
 			"bottom_banner": {
 				"enable": false,
 				"center_text": "UNCLASSIFIED",
-				"left_text": "<HOST> | <USER> | <KERNEL> | <OS>",
+				"left_text": "",
 				"right_text": "FPCON",
 				"size": 20
 			},
 			"text_options": {
 				"font": "Arial",
-				"size": 15
+				"size": 18
 			},
 			"border": {
 				"enable": false,
 				"size": 3
-			}
-		},
-		{
-			"id": "secret",
-			"color": "#FF0000",
-			"update_interval": 10000,
-			"top_banner": {
-				"enable": true,
-				"center_text": "SECRET",
-				"left_text": "<IP> | <LOCALIP> | <CPU_USE> | <MEMORY_CURRENT>",
-				"right_text": "CLASSIFIED",
-				"size": 20
-			},
-			"bottom_banner": {
-				"enable": true,
-				"center_text": "SECRET",
-				"left_text": "<HOST> | <USER> | <KERNEL> | <OS>",
-				"right_text": "TOP SECRET",
-				"size": 20
-			},
-			"text_options": {
-				"font": "Arial",
-				"size": 15
-			},
-			"border": {
-				"enable": true,
-				"size": 5
 			}
 		}
 	]
